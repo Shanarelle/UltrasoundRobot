@@ -13,8 +13,9 @@ const unsigned char usSensorMap[] = US_SENSOR_MAP; // Sensor position to address
 
 unsigned char usSensorIndex = 0; // Next sensor to scan
 unsigned short usSampleIndex = 0; // Sample index, incremented once per ADC conversion, representative of ToF
-unsigned short usWaveformData[US_SENSOR_COUNT][US_RX_COUNT]; // Raw waveform data - stored as ADC results
+unsigned short usWaveformData[US_SENSOR_COUNT][US_RX_COUNT]; // Current raw waveform data - stored as ADC results
 signed short usRangeReadings[US_SENSOR_COUNT]; // Latest range readings - stored as sample indexes
+signed short signalDifference; // The amount consecutive range readings are allowed to differ by
 
 unsigned short usTriggerChangeIndex = USTimeToSampleIndex(TRIGGER_NEAR_FAR_CHANGE); // Trigger changeover time
 unsigned short usTriggerNearUpper = USVoltageToTriggerLevel(TRIGGER_BASE + TRIGGER_OFFSET_NEAR); // Upper trigger level
@@ -133,7 +134,7 @@ void usarray_update_ranges(u8 sensors[], u8 numSensors) {
 		sensorNum = sensors[iSensor];
 
 		// Assume nothing will be found
-		usRangeReadings[sensorNum] = -1;
+		//usRangeReadings[sensorNum] = -1;
 
 		// Example each sample
 		for(iSample = 0; iSample < US_RX_COUNT; iSample++) {
@@ -146,10 +147,15 @@ void usarray_update_ranges(u8 sensors[], u8 numSensors) {
 				triggerLower = usTriggerFarLower;
 			}
 
+			signed short newRange;
 			// Check sample against trigger levels
 			if(usWaveformData[sensorNum][iSample] <= triggerLower || usWaveformData[sensorNum][iSample] >= triggerUpper) {
 				// Update range reading - converting distance from thousandths of mm to mm and halving to retrieve one way distance
-				usRangeReadings[sensorNum] = ((((unsigned int) USSampleIndexToTime(iSample)) * speedOfSound) / (1000 * 2)) - 20;
+				newRange = ((((unsigned int) USSampleIndexToTime(iSample)) * speedOfSound) / (1000 * 2)) - 20;
+				// Only save range reading if similar enough to previous one
+				if(newRange - usRangeReadings[sensorNum] <= signalDifference || usRangeReadings[sensorNum] - newRange <= signalDifference) {
+					usRangeReadings[sensorNum] = newRange;
+				}
 
 				// Done
 				break;

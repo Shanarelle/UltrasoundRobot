@@ -526,6 +526,20 @@ void ProcessUSArray() {
 					}
 					break;
 				}
+				case US_OUTPUT_FILE: {
+					for(i = 0; i < numSensors; i++) {
+						sensorNum = sensors[i];
+						// Print what sensor talking about then the range in a csv-friendly format
+						char first = ((usRangeReadings[sensorNum] & 0xF00) >> 4); //| (i & 0x0F); //(not sure what this OR is doing)
+						char second = usRangeReadings[sensorNum] & 0xFF;
+						uart_print_char(&UartBuffDebug, (char)sensorNum);
+						uart_print_char(&UartBuffDebug, ',');
+						uart_print_char(&UartBuffDebug, first);
+						uart_print_char(&UartBuffDebug, second);
+						uart_print_char(&UartBuffDebug, ';');
+					}
+					break;
+				}
 			}
 
 			// Output end message
