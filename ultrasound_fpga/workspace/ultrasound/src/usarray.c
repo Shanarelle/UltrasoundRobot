@@ -5,9 +5,12 @@
 #include "pulsegen.h"
 #include "us_receiver.h"
 
+
 #define USVoltageToTriggerLevel(x) (unsigned short) ((((unsigned int) x) * ((1 << USADCPrecision) - 1)) / USADCReference) // Voltage expressed in hundredths
 #define USSampleIndexToTime(x) (unsigned short) ((((1000000 * 10) / US_SAMPLE_RATE) * (((unsigned int) x) + 1)) / 10) // Time expressed in uS
 #define USTimeToSampleIndex(x) (unsigned short) ((((unsigned int) x) * 10) / ((1000000 * 10) / US_SAMPLE_RATE) - 1) // Time in uS
+#define N 5		//order of sequence
+#define M 31 	//length of sequence (2^order - 1)
 
 const unsigned char usSensorMap[] = US_SENSOR_MAP; // Sensor position to address map
 
@@ -24,6 +27,9 @@ unsigned short usTriggerFarUpper = USVoltageToTriggerLevel(TRIGGER_BASE + TRIGGE
 unsigned short usTriggerFarLower = USVoltageToTriggerLevel(TRIGGER_BASE - TRIGGER_OFFSET_FAR); // Lower trigger level
 
 signed short usTemperature = 210; // Temperature in degrees C, expressed in tenths
+
+//where the id sequences for pulse transmission will be stored
+unsigned char usIdSequences[US_SENSOR_COUNT][M];
 
 
 int init_usarray() {
@@ -56,9 +62,9 @@ unsigned char usarray_get_sensor() {
 	return usSensorIndex;
 }
 
-void usarray_set_triggers(unsigned short changever, unsigned short nearLower, unsigned short nearUpper, unsigned short farLower, unsigned short farUpper) {
+void usarray_set_triggers(unsigned short changover, unsigned short nearLower, unsigned short nearUpper, unsigned short farLower, unsigned short farUpper) {
 	// Update trigger levels
-	usTriggerChangeIndex = USTimeToSampleIndex(changever);
+	usTriggerChangeIndex = USTimeToSampleIndex(changover);
 	usTriggerNearLower = USVoltageToTriggerLevel(nearLower);
 	usTriggerNearUpper = USVoltageToTriggerLevel(nearUpper);
 	usTriggerFarUpper = USVoltageToTriggerLevel(farLower);
@@ -84,6 +90,40 @@ void usarray_measure_temp() {
 	usTemperature = (((int) adcTempResult) * 125 * 10) / 1000;
 }
 
+/* generates an M-sequence of 1s and 0s for each of the sensors
+*/
+void usarray_generate_sequence(u8 numSensors)	{
+	u8 taps[N] = {0,0,1,0,1}; //set those indices where primitive polynomial has that power to 1
+	u8 m[N] = {[0 ... N-1] = 1}; //initialise array to all ones
+	
+	u8 i, j;
+	u8 buf = 0;
+	for(i=0; i<M; i++) {
+		for(j=0; j<M; j++) {
+			buf += taps[j] * m[j];	//replace this with a bitwise operator later
+		}
+		buf = buf % 2;
+		//shift left
+		for(j=N-1; j>0; j--) {
+			m[j] = m[j-1];
+		}
+		
+		m[0] = buf;
+		usIdSequences[0][i] = m[N-1];
+	}
+}
+
+void usarray_send_pulse(u8 sensorNum) {
+	u8 i;
+	for(i=0; i<M; i++) {
+		if(usIdSequences[sensorNum][i] != 0) { //if the sequence is a 1, send pulse
+			pulseGen_GeneratePulse(XPAR_AXI_PULSEGEN_US_BASEADDR, 1, usSensorMap[sensorNum], US_TX_COUNT);
+		} else {	//otherwise, send silence
+			pulseGen_GeneratePulse(XPAR_AXI_PULSEGEN_US_BASEADDR, 0, usSensorMap[sensorNum], US_TX_COUNT);
+		}
+	}
+}
+
 void usarray_scan(u8 sensors[], u8 numSensors) {
 	if (numSensors == 0 || numSensors > US_SENSOR_COUNT)
 		return;
@@ -100,7 +140,7 @@ void usarray_scan(u8 sensors[], u8 numSensors) {
 		sensorNum = sensors[sensor];
 
 		// Generate ultrasound pulse
-		pulseGen_GeneratePulse(XPAR_AXI_PULSEGEN_US_BASEADDR, 1, usSensorMap[sensorNum], US_TX_COUNT);
+		usarray_send_pulse(sensorNum);
 
 		// Start sampling at 80kHz
 		sendUSSampleRequest(usSensorMap[sensorNum], US_RX_COUNT, 1250);
@@ -171,3 +211,4 @@ u16 usarray_distance(u8 sensor) {
 u8 usarray_detect_obstacle(u8 sensor, u16 distance) {
 	return (usRangeReadings[sensor] > 0 && usRangeReadings[sensor] < distance);
 }
+
