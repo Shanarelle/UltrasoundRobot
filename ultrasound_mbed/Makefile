@@ -13,8 +13,8 @@ THUMB2GNULIB=$(SOURCERY)/$(ARCH)/lib/$(GNU_VERSION)/thumb2
 THUMB2GNULIB2=$(SOURCERY)/$(ARCH)/lib/thumb2
 
 # "Cortex Microcontroller Software Interface Standard" Startup files
-CMSIS=$(PKG)/lpc1700-cmsis-lite-2011.01.26-i686-1
-CMSISINCLUDES=-I$(CMSIS)/include
+CMSIS=/cygdrive/c/Users/Clare/Documents/lpc175x_6x_cmsis_driver_library_0/lpc175x_6x_cmsis_driver_library
+CMSISINCLUDES=-I$(CMSIS)/Drivers/include
 CMSISFL=$(CMSIS)/lib/core_cm3.o \
 	$(CMSIS)/lib/system_LPC17xx.o \
 	$(CMSIS)/lib/startup_LPC17xx.o

@@ -31,12 +31,16 @@ def main(argv):
    return matcherfile, samplefile
 
 def cross_correlate(sample, matcher):
-	correlated = numpy.correlate(sample, matcher, "full")
-	normalization = sum([x**2 for x in sample])
-	normalization = normalization * sum([x**2 for x in matcher])
-	normalization = math.sqrt(normalization) / (len(sample) + len(matcher))
-	ans = [x/normalization for x in correlated]
-	return ans 
+    correlated = numpy.correlate(sample, matcher, "same", True)
+    normalization = sum([x**2 for x in sample])
+    normalization2 = sum([x**2 for x in matcher])
+    normalization3 = math.sqrt(normalization*normalization2)
+    print "sample: " + repr(sample)
+    print "matcher: " + repr(matcher)
+    print "before normalization: " + repr(correlated)
+    ans = [x/normalization3 for x in correlated]
+    print "after normalization: " + repr(ans)
+    return ans 
 
 
 values = [[]]
@@ -61,7 +65,7 @@ for line in file:
 	if ',' not in line:
 		continue
 	part = line.partition(',')
-	item = int(part[2])
+	item = float(part[2])
 	values[valueIndex].append(item)
 file.close()
 
@@ -75,15 +79,16 @@ for line in file:
 	if ',' not in line:
 		continue
 	part = line.partition(',')
-	item = int(part[2])
+	item = float(part[2])
 	matcherValues.append(item)
 file.close()
 
 #correlate each sample with the matcher
 for sample in values:
-	correlations.append(numpy.correlate(sample, matcherValues))
+	correlations.append(cross_correlate(sample, matcherValues))
 
 #print out results
 #print repr(correlations[0])
 print "max: " + repr(max(correlations[0]))
+print repr(correlations[0])
 #print "max: " + repr(max(correlations[1]))
