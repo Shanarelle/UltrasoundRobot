@@ -32,13 +32,16 @@ def graph_results(y_values, matcherSequence):
     #fig = plt.figure()
     ax = plt.subplot(111)
     
+    lineCount = 0
+    
     for series in y_values:
-        x = numpy.arange(len(series[1]))    #[x for x in range(len(series[1]))]
+        x = numpy.arange(len(series[1]))
         line, = ax.plot(x, series[1], '--', linewidth=2, label=str(series[0]))
+        if lineCount > 6:
+            dashes = [10, 5, 20, 5] # 10 points on, 5 off, 100 on, 5 off
+            line.set_dashes(dashes) # means the later ones in a different style
+        lineCount = lineCount + 1
     #plt.acorr(y_values)
-
-    #dashes = [10, 5, 100, 5] # 10 points on, 5 off, 100 on, 5 off
-    #line.set_dashes(dashes) # means the autocorrelation one in a different style
     
     # Shrink current axis's height by 10% on the bottom
     box = ax.get_position()
@@ -146,12 +149,14 @@ if (not test): #do correlation check with samples from file
     #autocorrelate the matcher
     correlations.append((matcherValues, cross_correlate(matcherValues, matcherValues)))
     
+    print repr(correlations)
+    
     graph_results(correlations, matcherValues)
 else:   #generate sequences then check correlation
     #values = generate_sequence(12, 5)
     values = []
     #add new sequence
-    values.append(generate_sequence(10, 1))
+    #values.append(generate_sequence(10, 1))
     #fill in sequences already in system
     values.append([1,0,0,0,1,0,0,0,0,1,0,1])
     values.append([0,0,0,0,0,0,0,1,0,0,1,0])

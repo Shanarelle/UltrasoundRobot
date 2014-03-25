@@ -29,12 +29,13 @@ POPULATION
 import sys
 import os
 import random
+import numpy
 
 #list of constants
-SAMPLE_NUMBER = 7
+SAMPLE_NUMBER = 21
 TEST_NUMBER = 13
 APPROXIMATION = 1
-filename = "matchTesterActualNegatives.txt"
+filename = "sequences1True.txt"
 test_file = "matchTesterMark3.txt"
 
 #initialise any necessary variables
@@ -44,7 +45,7 @@ test_values = [[] for i in range(TEST_NUMBER)]
 test_timing_values = [[] for i in range(TEST_NUMBER)]
 
 #initialise EA
-NUMBER_OF_ITERATIONS = 5000
+NUMBER_OF_ITERATIONS = 20000
 POPULATION_SIZE = 40
 population = [[] for i in range(POPULATION_SIZE)]
 
@@ -89,18 +90,21 @@ def classify_sample(sampleIndex, person):
 		
 
 def determine_fitness_timing(person):
-	global SAMPLE_NUMBER
-	global classification
-	fitness = 0
-	answers = []
-	for i in range(SAMPLE_NUMBER):
-		answer = classify_sample(i, person)
-		answers.append(answer)
-		#print "answer: " + repr(answer) + " sampleNumber: " + repr(i)
-		if answer == classification[i]:
-			fitness = fitness + 1
-	#print "fitness: " + repr(fitness)
-	return fitness, answers
+    global SAMPLE_NUMBER
+    global classification
+    fitness = 0
+    answers = []
+    for i in range(SAMPLE_NUMBER):
+        answer = classify_sample(i, person)
+        answers.append(answer)
+        #print "answer: " + repr(answer) + " sampleNumber: " + repr(i)
+        if answer == classification[i]:
+            if answer == 1:
+                fitness = fitness + 5
+            else:                           #add bias for positive identification
+                fitness = fitness + 1
+    #print "fitness: " + repr(fitness)
+    return fitness, answers
 
 def classify_test_sample(sampleIndex, person):
 	global test_timing_values
@@ -199,33 +203,33 @@ def fill_file(filename, values):
 # create timing based comparisons
 # think about using averages to determine what counts as a peak
 def create_timing_values(values, timing_values):
-	length = 0
-	on = 0
-	for sampleIndex in range(len(values)):
-		sampleList = values[sampleIndex]
-		index = 2
-		peak = max(sampleList)
-		trough = min(sampleList)
-		midpoint = 1305	#((peak - trough) / 2) + trough 		#find midpoint
-		on_amp = 50	#((peak - midpoint) / 2) + midpoint		#counts as on if more than halfway between midpoint and peak value
-		#print repr(midpoint) + "   " + repr(on_amp)
-		for index in range(len(sampleList)):
-			if ((abs(sampleList[index] - sampleList[index-1]) > on_amp) or
-				(abs(sampleList[index] - sampleList[index-2]) > on_amp)):
-				if (on == 0):		#if was off record values & switch to on
-					timing_values[sampleIndex].append((length, on))
-					on = 1
-					length = 1
-				else:					#otherwise just increment length counter
-					length = length + 1
-			else:	#if not on
-				if (on == 1):
-					timing_values[sampleIndex].append((length, on))
-					on = 0
-					length = 1
-				else:					#otherwise just increment length counter
-					length = length + 1
-	return timing_values
+    length = 0
+    on = 0
+    for sampleIndex in range(len(values)):
+        sampleList = values[sampleIndex]
+        index = 2
+        std_dev = numpy.std(sampleList)
+        print repr(std_dev)
+        on_amp = 1.5 * std_dev	#((peak - midpoint) / 2) + midpoint		#counts as on if more than halfway between midpoint and peak value
+        #print repr(midpoint) + "   " + repr(on_amp)
+        for index in range(len(sampleList)):
+            if ((abs(sampleList[index] - sampleList[index-1]) > on_amp) or
+            (abs(sampleList[index] - sampleList[index-2]) > on_amp)):
+                if (on == 0):		#if was off record values & switch to on
+                    timing_values[sampleIndex].append((length, on))
+                    on = 1
+                    length = 1
+                else:					#otherwise just increment length counter
+                    length = length + 1
+            else:	#if not on
+                if (on == 1):
+                    timing_values[sampleIndex].append((length, on))
+                    on = 0
+                    length = 1
+                else:					#otherwise just increment length counter
+                    length = length + 1
+    print repr(timing_values)
+    return timing_values
 
 ''' Main function '''
 
@@ -260,8 +264,10 @@ print "\n\rclassifications: " + repr(classification)
 print "\n\rbest seen = " + repr(max_fitness)
 print "best individual = " + repr(best_individual)
 
+'''
 #test final solution
 test_classification, test_values = fill_file(test_file, test_values)
 test_timing_values = create_timing_values(test_values, test_timing_values)
 test_fitness = determine_test_fitness_timing(best_individual, test_classification)
 print "test result: " + repr(test_fitness) + " of: " + repr(TEST_NUMBER)
+'''
