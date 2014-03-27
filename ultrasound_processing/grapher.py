@@ -11,7 +11,7 @@ A Line object's ``set_dashes`` method allows you to specify dashes with
 a series of on/off lengths (in points).
 """
 
-def graph_results(y_values, title):  
+def graph_results(y_values, title, labels):  
     #parameters for the look
     #plt.autoscale(False,'y')
     plt.xlabel('time')
@@ -25,13 +25,15 @@ def graph_results(y_values, title):
     
     for series in y_values:
         x = numpy.arange(len(series))
-        line, = ax.plot(x, series, '--', linewidth=2, label=str(lineCount))
+        line, = ax.plot(x, series, '-', linewidth=2, label=str(labels[lineCount]))      #, drawstyle='steps-mid'
+
         if lineCount > 6:
             dashes = [10, 5, 20, 5] # 10 points on, 5 off, 100 on, 5 off
             line.set_dashes(dashes) # means the later ones in a different style
         lineCount = lineCount + 1
     #plt.acorr(y_values)
     
+    '''
     # Shrink current axis's height by 10% on the bottom
     box = ax.get_position()
     ax.set_position([box.x0, box.y0 + box.height * 0.25,
@@ -41,6 +43,7 @@ def graph_results(y_values, title):
     ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
               fancybox=True, shadow=True, ncol=2)
     #plt.ylim(-1.5, 2.0)    #think should change y axis max&min
+    '''
 
     plt.show()
    
@@ -69,7 +72,6 @@ def main(argv):
 values = [[]]
 valueIndex = -1
 
-
 samplesfile, number = main(sys.argv[1:])
 
 file = open(samplesfile)
@@ -87,6 +89,15 @@ for line in file:
     values[valueIndex].append(item)
 file.close()
 
-print repr(values)
-
-graph_results(values, "Sequence Number " + number)
+print repr(values) '''
+TWO_PI = 6.284
+amplitude = 0.5
+values = []
+values.append([])
+for x in range(2):
+    for time in range(20):
+        intermediary = (TWO_PI / 20) * (time+15)
+        intermediary2 = amplitude * numpy.sin(intermediary)
+        values[0].append(intermediary2 + amplitude)
+'''
+graph_results(values, "Optimal vs Transmitted Sine Wave", ["Actual"])

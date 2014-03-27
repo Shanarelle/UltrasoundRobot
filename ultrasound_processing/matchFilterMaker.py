@@ -32,20 +32,20 @@ import random
 import numpy
 
 #list of constants
-SAMPLE_NUMBER = 21
+#SAMPLE_NUMBER = 13
 TEST_NUMBER = 13
 APPROXIMATION = 1
-filename = "sequences1True.txt"
+filename = "sequences1True-stripped.txt"
 test_file = "matchTesterMark3.txt"
 
 #initialise any necessary variables
-values = [[] for i in range(SAMPLE_NUMBER)]
-timing_values = [[] for i in range(SAMPLE_NUMBER)]
+values = []     #[] for i in range(SAMPLE_NUMBER)
+timing_values = []
 test_values = [[] for i in range(TEST_NUMBER)]
 test_timing_values = [[] for i in range(TEST_NUMBER)]
 
 #initialise EA
-NUMBER_OF_ITERATIONS = 20000
+NUMBER_OF_ITERATIONS = 75000
 POPULATION_SIZE = 40
 population = [[] for i in range(POPULATION_SIZE)]
 
@@ -68,9 +68,7 @@ def tuple_compare(list_, sub_list):
 	for index in range(len(sub_list)):
 		if (sub_list[index][1] != list_[index][1]):
 			return False
-		if (sub_list[index][0] > list_[index][0]):
-			return False
-		if ((list_[index][0] - sub_list[index][0]) > 3):
+		if (abs(list_[index][0] - sub_list[index][0]) > 3):
 			return False
 	return True
 
@@ -90,11 +88,10 @@ def classify_sample(sampleIndex, person):
 		
 
 def determine_fitness_timing(person):
-    global SAMPLE_NUMBER
     global classification
     fitness = 0
     answers = []
-    for i in range(SAMPLE_NUMBER):
+    for i in range(len(classification)):
         answer = classify_sample(i, person)
         answers.append(answer)
         #print "answer: " + repr(answer) + " sampleNumber: " + repr(i)
@@ -152,21 +149,27 @@ def determine_fitness_all_timing():
 	return fitness
 
 def mutate_timing(parent):
-	global population
-	#add an extra digit with 10% probability
-	if random.randint(0,399) == 1:
-		if (len(population[parent]) % 2 == 1):
-			population[parent].append((2,0))
-		else:
-			population[parent].append((2,1))
-	#change a digit with 20% probability
-	if random.randint(0,9) == 1:
-		i = random.randint(0,len(population[parent])-1)
-		if i % 2 == 1:
-			population[parent][i] = (random.randrange(0,40), 0)
-		else:
-			population[parent][i] = (random.randrange(0,40), 1)
-	return parent
+    global population
+    #add an extra digit with 2% probability
+    if random.randint(0,49) == 1:
+        options = [0,1,2]
+        options.remove(population[parent][-1][1])
+        #print repr(options)
+        population[parent].append((2,random.choice(options)))
+    #change a digit with 20% probability
+    if random.randint(0,9) == 1:
+        i = random.randint(0,len(population[parent])-1)
+        population[parent][i] = (random.randrange(0,40), population[parent][i][1])
+    #change an amplitude classification with 10% probability
+    if random.randint(0,19) == 1:
+        options = [0,1,2]
+        i = random.randint(0,len(population[parent])-1)
+        if i > 0:
+            options.remove(population[parent][i-1][1])
+        if (i < len(population[parent])-2) and (population[parent][i-1][1] != population[parent][i+1][1]):
+            options.remove(population[parent][i+1][1])
+        population[parent][i] = (population[parent][i][0], random.choice(options))
+    return parent
 
 def initialise_timing_pop():
 	global population
@@ -180,25 +183,29 @@ def initialise_timing_pop():
 
 #open file and fill variables with data for all iterations
 def fill_file(filename, values):
-	global APPROXIMATION
-	valueIndex = -1
-	classification = []
-	file = open(filename)
-	for line in file:
-		if line.isspace():
-			continue
-		if 'classification: ' in line:
-			classification.append(int(line[line.find('classification: ') + 16]))
-		if 'START' in line:
-			valueIndex = valueIndex + 1
-		if ',' not in line:
-			continue
-		part = line.partition(',')
-		if (int(part[2]) < 3200):	#if value saturated, just use previous one
-			item = int(round(int(part[2]) / APPROXIMATION))
-		values[valueIndex].append(item)
-	file.close()
-	return classification, values
+    global APPROXIMATION
+    valueIndex = -1
+    classification = []
+    sequence = []
+    file = open(filename)
+    for line in file:
+        if line.isspace():
+            continue
+        if 'classification: ' in line:
+            classification.append(int(line[line.find('classification: ') + 16]))
+        if 'START' in line:
+            valueIndex = valueIndex + 1
+            values.append([])
+        if '#' in line:
+            sequence.append(line[line.find('#') + 1])
+        if ',' not in line:
+            continue
+        part = line.partition(',')
+        #if (int(part[2]) < 3200):	#if value saturated, just use previous one
+        item = int(round(int(part[2]) / APPROXIMATION))
+        values[valueIndex].append(item)
+    file.close()
+    return classification, values, sequence
 
 # create timing based comparisons
 # think about using averages to determine what counts as a peak
@@ -206,38 +213,54 @@ def create_timing_values(values, timing_values):
     length = 0
     on = 0
     for sampleIndex in range(len(values)):
+        timing_values.append([])
         sampleList = values[sampleIndex]
         index = 2
         std_dev = numpy.std(sampleList)
-        print repr(std_dev)
-        on_amp = 1.5 * std_dev	#((peak - midpoint) / 2) + midpoint		#counts as on if more than halfway between midpoint and peak value
+        #print repr(std_dev)
+        on_amp_1 = 0.75 * std_dev	#((peak - midpoint) / 2) + midpoint		#counts as on if more than halfway between midpoint and peak value
+        on_amp_2 = 1.25 * std_dev
+        on_amp_3 = 4.5 * std_dev
         #print repr(midpoint) + "   " + repr(on_amp)
         for index in range(len(sampleList)):
-            if ((abs(sampleList[index] - sampleList[index-1]) > on_amp) or
-            (abs(sampleList[index] - sampleList[index-2]) > on_amp)):
-                if (on == 0):		#if was off record values & switch to on
+            diff = max(abs(sampleList[index] - sampleList[index-1]), abs(sampleList[index] - sampleList[index-2]))
+            if (diff > on_amp_3):
+                if (on != 3):		#if was off record values & switch to on
+                    timing_values[sampleIndex].append((length, on))
+                    on = 3
+                    length = 1
+                else:					#otherwise just increment length counter
+                    length = length + 1
+            elif (diff > on_amp_2):
+                if (on != 2):		#if was off record values & switch to on
+                    timing_values[sampleIndex].append((length, on))
+                    on = 2
+                    length = 1
+                else:					#otherwise just increment length counter
+                    length = length + 1
+            elif (diff > on_amp_1):
+                if (on != 1):		#if was off record values & switch to on
                     timing_values[sampleIndex].append((length, on))
                     on = 1
                     length = 1
                 else:					#otherwise just increment length counter
                     length = length + 1
             else:	#if not on
-                if (on == 1):
+                if (on != 0):
                     timing_values[sampleIndex].append((length, on))
                     on = 0
                     length = 1
                 else:					#otherwise just increment length counter
                     length = length + 1
-    print repr(timing_values)
+    #print repr(timing_values)
     return timing_values
 
 ''' Main function '''
 
 #open file and fill variables with data for one iteration
-classification, values = fill_file(filename, values)
+classification, values, sequence = fill_file(filename, values)
 
 timing_values = create_timing_values(values, timing_values)
-print "timingvalues: " + repr(timing_values)
 
 #run EA using training data got from file (maybe later alternate correct and incorrect sequences)
 max_fitness = 0
@@ -253,15 +276,18 @@ for i in range(NUMBER_OF_ITERATIONS):
 		best_individual = population[parent]
 	if ( i % 1000 == 0):
 		print "\nstill running..." + repr(i)
-	if (max_fitness == SAMPLE_NUMBER):
+	if (max_fitness == len(classification)):
 		break
 
 
 #print final solution
 for i in range(POPULATION_SIZE-1):
 	print repr(i) + ": " + repr(population[i]) + ", fitness: " + repr(fitness[i])
-print "\n\rclassifications: " + repr(classification)
-print "\n\rbest seen = " + repr(max_fitness)
+
+print "filename: " + repr(filename)
+print "sequence: " + repr(sequence)
+print "classifications: " + repr(classification)
+print "best seen = " + repr(max_fitness)
 print "best individual = " + repr(best_individual)
 
 '''

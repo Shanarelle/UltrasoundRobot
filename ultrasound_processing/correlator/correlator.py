@@ -171,9 +171,14 @@ else:   #generate sequences then check correlation
     
     #correlate each sample against each other, in separate graphs
     for matcher in values:
+        lists = []
         for sample in values:
             correlations.append((sample, cross_correlate(sample, matcher)))
-        graph_results(correlations, matcher)
+            lists.append(cross_correlate(sample, matcher))
+        #graph_results(correlations, matcher)
+        print "matcher is: " + repr(matcher)
+        for listItem in lists:
+            print "max is: " + repr(max(listItem))
         correlations = []
 
 
