@@ -35,7 +35,8 @@ enum DEBUG_CMD {
 enum US_OUTPUT {
 	US_OUTPUT_NONE = 0x00, // Output off
 	US_OUTPUT_WAVEFORM = 0x01, // Raw waveform
-	US_OUTPUT_RANGE = 0x02 // Range data
+	US_OUTPUT_RANGE = 0x02, // Range data
+	US_OUTPUT_FILE = 0x03  // Waveform data for file format
 };
 
 // Mobile platform responses

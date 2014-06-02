@@ -1,3 +1,4 @@
+import processing.serial.*;
 // Learning Processing
 // Daniel Shiffman
 // http://www.learningprocessing.com

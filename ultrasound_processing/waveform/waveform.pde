@@ -9,14 +9,14 @@ import javax.swing.*;
 final static float TEMPERATURE = 22;
 
 // Serial port to listen on (-1 for disabled)
-final static int SERIAL_PORT = 1;
+final static int SERIAL_PORT = 0;
 
 // Set to false to use mBed instead of FPGA input
 final static boolean FPGA = false;
 
 // ###############################################################################
 
-final static int SAMPLE_TIME = FPGA ? 5000 : 4000; // uS
+final static int SAMPLE_TIME = FPGA ? 50000 : 4000; // uS
 final static int SAMPLE_RATE = 80000; // Hz
 
 final static int SENSOR_COUNT = FPGA ? 10 : 1; // number of ultrasound sensors
@@ -32,7 +32,7 @@ final static int DISPLAY_MESSAGE_TIME = 5; // Seconds to display onscreen messag
 
 final static String LOG_FILE_NAME = "ultrasound_log_"; // Prefix of log file name
 
-final static int DEFAULT_PAGE_SIZE = 400; // Samples per screen
+final static int DEFAULT_PAGE_SIZE = 4000; // Samples per screen
 final static int PAGE_CHANGE = 10; // Amount to inc / dec page size by per key stroke
 
 final static boolean ENABLE_TRIGGER_BASE_LINE = false; // Enable line at trigger base (op-amp ref voltage)
@@ -64,6 +64,9 @@ Serial serialPort;
 
 // File chooser
 JFileChooser fc = new JFileChooser();
+
+//OutputStream
+OutputStream output;
 
 // Writing files
 File fFolder = null;
@@ -186,6 +189,8 @@ void setup() {
     // Display message
     displayMessage("Ready, Serial Port Disabled!");
   }
+  
+  openWrite();
 }
 
 void displayMessage(String sMsg) {
@@ -390,8 +395,10 @@ void serialEvent(Serial port) {
       processSample(inBuffer, true);
     }
   }
-  else
-    processSample(port.readStringUntil('\n'), true);
+  else {
+    int n = 10; //newline in ASCII
+    //processSample(port.readStringUntil(n), true);
+  }
 }
 
 // FPGA version
@@ -469,13 +476,16 @@ void processSample(int[] input, boolean log) {
     else if (state == SAMPLING) {
       int index = input[0] & 0x0F;
       
-      // Check sensor index - ignore other data
-      if(index != sensorIndex) return;
-      
       int value = ((input[0] & 0xF0) << 4) | input[1];
       
       // Retrieve sample value
       float fInput = float(value);
+      
+      // Write data to file with index
+      writeFile(str(index) + ": " + str(value));
+      
+      // Check sensor index - ignore other data
+      if(index != sensorIndex) return;
 
       // Check index
       if (dataIndex >= data.length) {
@@ -827,6 +837,15 @@ void keyPressed() {
     case 'k':
       // Close current log file
       closeWrite();
+      
+      break;
+    case '1':
+      // Test process sampling function
+      displayMessage("pressed 1");
+      int[] buffer = new int[2];
+      buffer[0] = 0x05;
+      buffer[1] = 0x08;
+      processSample(buffer, false);
       
       break;
     }
